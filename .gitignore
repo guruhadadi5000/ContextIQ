@@ -7,3 +7,5 @@
 .env.test
 .env.production
 frontend/node_modules
+__pycache__/
+*.py[cod]
