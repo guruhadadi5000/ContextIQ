@@ -1,0 +1,14 @@
+
+I am a Senior Software Engineer based in Sydney, Australia, with over 10 years of experience in full-stack software development, frontend engineering, and enterprise applications.
+
+My expertise includes React, Next.js, TypeScript, JavaScript, Node.js, Express.js, Python, REST APIs, microservices, cloud architecture, and CI/CD automation.
+
+I have worked with organisations including Toyota, Cover Genius, ANZ, and JP Morgan Chase, developing scalable B2B and B2C applications.
+
+At Cover Genius, I worked on RentalCover.com and XCover.com, focusing on frontend modernisation, performance optimisation, accessibility, internationalisation, and enterprise application enhancements.
+
+My technical background includes AWS, Docker, Kubernetes, GitHub Actions, Azure DevOps, Playwright, Cypress, and application observability tools.
+
+Currently, I am expanding my expertise in Generative AI and AI Engineering, focusing on LLM integration, Retrieval-Augmented Generation (RAG), vector databases, AI agents, and serverless AI applications.
+
+I am particularly interested in combining modern full-stack engineering with AI to build scalable, secure, and production-ready intelligent applications.
