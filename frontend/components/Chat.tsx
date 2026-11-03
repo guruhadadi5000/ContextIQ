@@ -41,7 +41,7 @@ export default function Chat() {
 
     try {
       const response = await fetch(
-        "https://tw7b1qmv06.execute-api.ap-southeast-2.amazonaws.com/chat",
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/chat`,
         {
           method: "POST",
           headers: {
@@ -100,7 +100,7 @@ export default function Chat() {
           <Bot className="w-6 h-6" />
           ContextIQ AI
         </h2>
-        <p className="text-sm text-slate-300 mt-1">Your AI course companion</p>
+        <p className="text-sm text-slate-300 mt-1">Your ai assistant</p>
       </div>
 
       {/* Messages */}

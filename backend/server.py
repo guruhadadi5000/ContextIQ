@@ -161,7 +161,7 @@ def call_bedrock(conversation: List[Dict], user_message: str) -> str:
 @app.get("/")
 async def root():
     return {
-        "message": "AI Digital Twin API (Powered by AWS Bedrock)",
+        "message": "ContextIAI - Serverless AI Assistant Platform (Powered by AWS Bedrock)",
         "memory_enabled": True,
         "storage": "S3" if USE_S3 else "local",
         "ai_model": BEDROCK_MODEL_ID
