@@ -101,7 +101,7 @@ def save_conversation(session_id: str, messages: List[Dict]):
 @app.get("/")
 async def root():
     return {
-        "message": "AI Digital Twin API",
+        "message": "ContextIQ API",
         "memory_enabled": True,
         "storage": "S3" if USE_S3 else "local",
     }

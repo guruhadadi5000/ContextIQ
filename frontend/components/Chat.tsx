@@ -40,16 +40,19 @@ export default function Chat() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        "https://tw7b1qmv06.execute-api.ap-southeast-2.amazonaws.com/chat",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: input,
+            session_id: sessionId || undefined,
+          }),
         },
-        body: JSON.stringify({
-          message: input,
-          session_id: sessionId || undefined,
-        }),
-      });
+      );
 
       if (!response.ok) throw new Error("Failed to send message");
 
