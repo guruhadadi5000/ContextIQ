@@ -153,7 +153,7 @@ resource "aws_apigatewayv2_api" "main" {
   cors_configuration {
     allow_credentials = false
     allow_headers     = ["*"]
-    allow_methods     = ["GET", "POST", "OPTIONS"]
+    allow_methods     = ["GET", "POST", "DELETE", "OPTIONS"]
     allow_origins     = ["*"]
     max_age           = 300
   }
@@ -193,6 +193,30 @@ resource "aws_apigatewayv2_route" "post_chat" {
 resource "aws_apigatewayv2_route" "get_health" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "GET /health"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "get_conversation" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /conversation/{session_id}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "get_document" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /document/{session_id}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "post_document" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "POST /document"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "delete_document" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "DELETE /document/{session_id}"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 

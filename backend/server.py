@@ -1,6 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+import asyncio
 import os
 from dotenv import load_dotenv
 from typing import Optional, List, Dict
@@ -8,8 +10,10 @@ import json
 import uuid
 from datetime import datetime
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 from context import prompt
+from extract import DocumentError, extract_text
 
 # Load environment variables
 load_dotenv()
@@ -22,14 +26,15 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
 # Initialize Bedrock client
 bedrock_client = boto3.client(
-    service_name="bedrock-runtime", 
-    region_name=os.getenv("DEFAULT_AWS_REGION", "ap-southeast-2")
+    service_name="bedrock-runtime",
+    region_name=os.getenv("DEFAULT_AWS_REGION", "ap-southeast-2"),
+    config=Config(retries={"max_attempts": 5, "mode": "adaptive"}),
 )
 
 # Bedrock model selection
@@ -65,6 +70,10 @@ class Message(BaseModel):
 # Memory management functions
 def get_memory_path(session_id: str) -> str:
     return f"{session_id}.json"
+
+
+def get_document_path(session_id: str) -> str:
+    return f"{session_id}.document.json"
 
 
 def load_conversation(session_id: str) -> List[Dict]:
@@ -103,59 +112,106 @@ def save_conversation(session_id: str, messages: List[Dict]):
             json.dump(messages, f, indent=2)
 
 
-def call_bedrock(conversation: List[Dict], user_message: str) -> str:
-    """Call AWS Bedrock with conversation history"""
-    
-    # Build messages in Bedrock format
-    messages = []
-    
-    # Add system prompt as first user message
-    # Or there's a better way to do this - pass in system=[{"text": prompt()}] to the converse call below
-    messages.append({
-        "role": "user", 
-        "content": [{"text": f"System: {prompt()}"}]
-    })
-    
-    # Add conversation history (limit to last 25 exchanges)
-    for msg in conversation[-50:]:
-        messages.append({
-            "role": msg["role"],
-            "content": [{"text": msg["content"]}]
-        })
-    
-    # Add current user message
-    messages.append({
-        "role": "user",
-        "content": [{"text": user_message}]
-    })
-    
-    try:
-        # Call Bedrock using the converse API
-        response = bedrock_client.converse(
-            modelId=BEDROCK_MODEL_ID,
-            messages=messages,
-            inferenceConfig={
-                "maxTokens": 2000,
-                "temperature": 0.7,
-                "topP": 0.9
-            }
+def load_document(session_id: str) -> Optional[Dict]:
+    if USE_S3:
+        try:
+            response = s3_client.get_object(Bucket=S3_BUCKET, Key=get_document_path(session_id))
+            return json.loads(response["Body"].read().decode("utf-8"))
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchKey":
+                return None
+            raise
+    file_path = os.path.join(MEMORY_DIR, get_document_path(session_id))
+    if not os.path.exists(file_path):
+        return None
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_document(session_id: str, document: Dict):
+    body = json.dumps(document, indent=2)
+    if USE_S3:
+        s3_client.put_object(
+            Bucket=S3_BUCKET,
+            Key=get_document_path(session_id),
+            Body=body,
+            ContentType="application/json",
         )
-        
-        # Extract the response text
-        return response["output"]["message"]["content"][0]["text"]
-        
-    except ClientError as e:
-        error_code = e.response['Error']['Code']
-        if error_code == 'ValidationException':
-            # Handle message format issues
-            print(f"Bedrock validation error: {e}")
-            raise HTTPException(status_code=400, detail="Invalid message format for Bedrock")
-        elif error_code == 'AccessDeniedException':
-            print(f"Bedrock access denied: {e}")
-            raise HTTPException(status_code=403, detail="Access denied to Bedrock model")
-        else:
-            print(f"Bedrock error: {e}")
-            raise HTTPException(status_code=500, detail=f"Bedrock error: {str(e)}")
+        return
+    os.makedirs(MEMORY_DIR, exist_ok=True)
+    file_path = os.path.join(MEMORY_DIR, get_document_path(session_id))
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(body)
+
+
+def delete_document_file(session_id: str):
+    if USE_S3:
+        s3_client.delete_object(Bucket=S3_BUCKET, Key=get_document_path(session_id))
+        return
+    file_path = os.path.join(MEMORY_DIR, get_document_path(session_id))
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+
+def document_instructions(document: Dict) -> str:
+    filename = document["filename"]
+    return f"""You are ContextIQ. Answer questions about the uploaded document below.
+
+Document name: {filename}
+Page breaks are marked like [Page N]. Answer only from this document and the conversation.
+If the answer is not in the document, say that you cannot find it there. Do not invent details.
+Format the answer in Markdown when it helps: short headings, lists, and fenced code.
+End every answer with a final plain-text line, not inside Markdown, in exactly this form:
+Source: {filename} · Page N
+Use the page number you relied on. If the document has no page markers, end with:
+Source: {filename}
+
+DOCUMENT:
+{document["text"]}
+"""
+
+
+def model_messages(conversation: List[Dict], user_message: str) -> List[Dict]:
+    messages = []
+    for msg in conversation[-20:]:
+        role = msg.get("role")
+        if role not in ("user", "assistant"):
+            continue
+        if messages and messages[-1]["role"] == role:
+            messages[-1]["content"][0]["text"] += "\n" + msg["content"]
+            continue
+        messages.append({"role": role, "content": [{"text": msg["content"]}]})
+
+    if messages and messages[-1]["role"] == "user":
+        messages[-1]["content"][0]["text"] += "\n" + user_message
+    else:
+        messages.append({"role": "user", "content": [{"text": user_message}]})
+    return messages
+
+
+def bedrock_error_text(error: ClientError) -> str:
+    code = error.response["Error"]["Code"]
+    if code == "ValidationException":
+        return "Invalid message format for Bedrock"
+    if code == "AccessDeniedException":
+        return "Access denied to Bedrock model"
+    if code == "ThrottlingException":
+        return "The model is busy. Try again in a moment."
+    print(f"Bedrock error: {error}")
+    return "The model could not answer just now."
+
+
+def sse(payload: Dict) -> str:
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+def next_stream_event(iterator):
+    try:
+        return next(iterator)
+    except StopIteration:
+        return None
+    except ClientError as error:
+        return error
 
 
 @app.get("/")
@@ -177,40 +233,112 @@ async def health_check():
     }
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/chat")
 async def chat(request: ChatRequest):
+    if not request.message.strip():
+        raise HTTPException(status_code=400, detail="Enter a message.")
+
+    session_id = request.session_id or str(uuid.uuid4())
     try:
-        # Generate session ID if not provided
-        session_id = request.session_id or str(uuid.uuid4())
-
-        # Load conversation history
         conversation = load_conversation(session_id)
+        document = load_document(session_id)
+    except Exception as error:
+        print(f"Error in chat endpoint: {error}")
+        raise HTTPException(status_code=500, detail="The conversation could not be loaded.") from error
 
-        # Call Bedrock for response
-        assistant_response = call_bedrock(conversation, request.message)
+    system_text = document_instructions(document) if document else prompt()
+    messages = model_messages(conversation, request.message)
 
-        # Update conversation history
+    async def events():
+        try:
+            response = await asyncio.to_thread(
+                bedrock_client.converse_stream,
+                modelId=BEDROCK_MODEL_ID,
+                system=[{"text": system_text}],
+                messages=messages,
+                inferenceConfig={"maxTokens": 2000, "temperature": 0.7, "topP": 0.9},
+            )
+        except ClientError as error:
+            yield sse({"error": bedrock_error_text(error)})
+            return
+
+        yield sse({"session_id": session_id})
+        parts: List[str] = []
+        iterator = iter(response["stream"])
+        while True:
+            event = await asyncio.to_thread(next_stream_event, iterator)
+            if event is None:
+                break
+            if isinstance(event, ClientError):
+                yield sse({"error": bedrock_error_text(event)})
+                return
+            delta = event.get("contentBlockDelta", {}).get("delta", {}).get("text", "")
+            if delta:
+                parts.append(delta)
+                yield sse({"delta": delta})
+
+        full_response = "".join(parts).strip()
+        if not full_response:
+            yield sse({"error": "The model returned an empty reply."})
+            return
+
         conversation.append(
             {"role": "user", "content": request.message, "timestamp": datetime.now().isoformat()}
         )
         conversation.append(
             {
                 "role": "assistant",
-                "content": assistant_response,
+                "content": full_response,
                 "timestamp": datetime.now().isoformat(),
             }
         )
+        await asyncio.to_thread(save_conversation, session_id, conversation)
+        yield sse({"done": True})
 
-        # Save conversation
-        save_conversation(session_id, conversation)
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
-        return ChatResponse(response=assistant_response, session_id=session_id)
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Error in chat endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+@app.post("/document")
+async def upload_document(
+    file: UploadFile = File(...),
+    session_id: Optional[str] = Form(None),
+):
+    session_id = session_id or str(uuid.uuid4())
+    data = await file.read()
+    try:
+        extracted = extract_text(file.filename or "document", data)
+    except DocumentError as error:
+        raise HTTPException(status_code=error.status_code, detail=str(error)) from error
+
+    extracted["uploaded_at"] = datetime.now().isoformat()
+    save_document(session_id, extracted)
+    return {
+        "session_id": session_id,
+        "filename": extracted["filename"],
+        "characters": extracted["characters"],
+    }
+
+
+@app.get("/document/{session_id}")
+async def get_document(session_id: str):
+    document = load_document(session_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="No document for this conversation")
+    return {
+        "session_id": session_id,
+        "filename": document["filename"],
+        "characters": document["characters"],
+    }
+
+
+@app.delete("/document/{session_id}")
+async def remove_document(session_id: str):
+    delete_document_file(session_id)
+    return {"session_id": session_id, "removed": True}
 
 
 @app.get("/conversation/{session_id}")

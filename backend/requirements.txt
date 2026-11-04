@@ -4,4 +4,5 @@ python-dotenv
 python-multipart
 boto3
 pypdf
+python-docx
 mangum
