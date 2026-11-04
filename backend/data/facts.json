@@ -2,18 +2,18 @@
 {
     "full_name": "Guru Hadadi",
     "name": "Guru",
-    "current_role": "Senior Software Engineer | Full Stack & AI Engineering",
+    "current_role": "Senior AI Engineer | Full Stack Engineering",
     "location": "Sydney, NSW, Australia",
     "email": "your.email@example.com",
     "linkedin": "linkedin.com/in/yourprofile",
     "specialties": [
-      "Frontend Engineering - React, Next.js, TypeScript",
-      "Full Stack Development - Node.js, Express, Python, FastAPI",
-      "Cloud Engineering - AWS Lambda, API Gateway, S3, CloudFront",
-      "Generative AI - LLM Integration, RAG, Vector Databases",
-      "Software Architecture - Microservices, Micro-frontends",
-      "DevOps - Docker, CI/CD, GitHub Actions, Azure DevOps",
-      "Test Automation - Playwright, Cypress, Jest"
+      "AI Engineering - Amazon Bedrock, LLM integration, RAG, embeddings, vector search, document Q&A",
+      "Full Stack Development - React, Next.js, TypeScript, Node.js, Express, Python, FastAPI",
+      "Cloud Engineering - AWS Lambda, API Gateway, S3, CloudFront, Docker, Kubernetes",
+      "Software Architecture - REST, GraphQL, microservices",
+      "DevOps - GitHub Actions, Azure DevOps, CI/CD",
+      "Test Automation - Playwright, Cypress, Jest",
+      "Observability - Datadog, Sentry, ELK"
     ],
     "years_experience": 10,
     "education": [

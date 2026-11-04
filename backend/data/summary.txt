@@ -1,14 +1,9 @@
+I am a Senior AI Engineer based in Sydney, Australia, with over 10 years of software engineering experience and a full-stack background.
 
-I am a Senior Software Engineer based in Sydney, Australia, with over 10 years of experience in full-stack software development, frontend engineering, and enterprise applications.
+I build production conversational applications, document question answering, and serverless LLM systems. That work sits on earlier delivery of scalable B2B and B2C products, legacy modernisation, and cloud-native software.
 
-My expertise includes React, Next.js, TypeScript, JavaScript, Node.js, Express.js, Python, REST APIs, microservices, cloud architecture, and CI/CD automation.
+I have worked with Toyota, Cover Genius, Ampol, ANZ, First Advantage, JP Morgan Chase, and TCS. At Cover Genius I worked on RentalCover.com and XCover.com, including frontend modernisation, performance, accessibility, internationalisation, and payment-related workflows.
 
-I have worked with organisations including Toyota, Cover Genius, ANZ, and JP Morgan Chase, developing scalable B2B and B2C applications.
+AI engineering work covers LLM integration, retrieval-augmented generation, embeddings, vector search, agentic workflows, and serverless AI on AWS. I am building ContextIQ with Next.js, FastAPI, conversation memory, document upload, and Amazon Bedrock.
 
-At Cover Genius, I worked on RentalCover.com and XCover.com, focusing on frontend modernisation, performance optimisation, accessibility, internationalisation, and enterprise application enhancements.
-
-My technical background includes AWS, Docker, Kubernetes, GitHub Actions, Azure DevOps, Playwright, Cypress, and application observability tools.
-
-Currently, I am expanding my expertise in Generative AI and AI Engineering, focusing on LLM integration, Retrieval-Augmented Generation (RAG), vector databases, AI agents, and serverless AI applications.
-
-I am particularly interested in combining modern full-stack engineering with AI to build scalable, secure, and production-ready intelligent applications.
+Full-stack skills remain part of the profile: React, Next.js, TypeScript, Node.js, Express, Python, FastAPI, REST and GraphQL APIs, microservices, AWS, Docker, Kubernetes, GitHub Actions, Azure DevOps, Playwright, Cypress, Jest, Datadog, Sentry, and ELK.
