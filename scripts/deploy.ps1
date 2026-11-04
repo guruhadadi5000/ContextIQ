@@ -15,8 +15,14 @@ Set-Location ..
 
 # 2. Terraform workspace & apply
 Set-Location terraform
-terraform init -input=false
-
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+AWS_REGION=${DEFAULT_AWS_REGION:-ap-southeast-2}
+terraform init -input=false \
+  -backend-config="bucket=context-iq-ai-terraform-state-${AWS_ACCOUNT_ID}" \
+  -backend-config="key=${ENVIRONMENT}/terraform.tfstate" \
+  -backend-config="region=${AWS_REGION}" \
+  -backend-config="dynamodb_table=context-iq-ai-terraform-locks" \
+  -backend-config="encrypt=true"
 if (-not (terraform workspace list | Select-String $Environment)) {
     terraform workspace new $Environment
 } else {
